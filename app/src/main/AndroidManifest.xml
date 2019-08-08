@@ -32,4 +32,7 @@
         <service  android:name=".crypto.ecc.ECCService"/>
     </application>
 
+    <!-- Solve: No address associated with hostname -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
 </manifest>

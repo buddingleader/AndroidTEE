@@ -19,7 +19,6 @@ class ContainerService : Service() {
 
         // Normally we would do some work here, like download a file.
         // For our sample, we just sleep for 5 seconds.
-        var dataPath = filesDir.absolutePath
         val outStream = openFileOutput("a.txt", Context.MODE_PRIVATE)
         outStream.write("hello world!".toByteArray())
         outStream.write(intent!!.getStringExtra(EXTRA_MESSAGE).toByteArray())
