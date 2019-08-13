@@ -5,6 +5,7 @@
       <w>ecdh</w>
       <w>pkcs</w>
       <w>secp</w>
+      <w>unmarshal</w>
     </words>
   </dictionary>
 </component>

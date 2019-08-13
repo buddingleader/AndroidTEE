@@ -5,6 +5,8 @@ import java.security.*
 import javax.crypto.KeyAgreement
 import javax.crypto.SecretKey
 import org.bouncycastle.jce.ECNamedCurveTable
+import java.security.interfaces.ECPrivateKey
+import java.security.interfaces.ECPublicKey
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -12,10 +14,10 @@ import javax.crypto.spec.SecretKeySpec
 
 class ECDH {
     companion object {
-        val provider = org.bouncycastle.jce.provider.BouncyCastleProvider()
-        val iv: ByteArray = SecureRandom().generateSeed(16)
+        private val provider = org.bouncycastle.jce.provider.BouncyCastleProvider()
+        private val iv: ByteArray = SecureRandom().generateSeed(16)
 
-
+        // from https://gist.github.com/zcdziura/7652286
         fun generateKeyPair(): KeyPair {
             val parameterSpec = ECNamedCurveTable.getParameterSpec("brainpoolp256r1")
             val keyPairGenerator = KeyPairGenerator.getInstance("ECDH", provider)
@@ -24,17 +26,18 @@ class ECDH {
             return keyPairGenerator.generateKeyPair()
         }
 
-        fun generateSharedSecret(privateKey: PrivateKey, publicKey: PublicKey): SecretKey? {
-            val keyAgreement = KeyAgreement.getInstance("ECDH", provider)
-            keyAgreement.init(privateKey)
-            keyAgreement.doPhase(publicKey, true)
+        fun generateSharedSecret(privateKey: ECPrivateKey, publicKey: ECPublicKey): ByteArray {
+            val (x, _) = ECC.scalarMultiply(
+                privateKey.params.curve, publicKey.w.affineX, publicKey.w.affineY, privateKey.s.toByteArray()
+            )
 
-            return keyAgreement.generateSecret("AES")
+            val digest = MessageDigest.getInstance("SHA-256")
+            return digest.digest(x.toByteArray())
         }
 
         fun encrypt(key: SecretKey?, plainTextBytes: ByteArray): String {
             val ivSpec = IvParameterSpec(iv)
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding", provider)
+            val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding", provider)
             val cipherText: ByteArray
 
             cipher.init(Cipher.ENCRYPT_MODE, key, ivSpec)

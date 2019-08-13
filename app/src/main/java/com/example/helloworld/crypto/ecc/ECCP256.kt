@@ -1,28 +1,44 @@
 package com.example.helloworld.crypto.ecc
 
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
+import com.example.helloworld.utils.HexUtil
 import java.security.*
-import java.security.spec.ECGenParameterSpec
+import java.security.interfaces.ECPublicKey
+import java.security.spec.ECParameterSpec
+import java.security.spec.ECPublicKeySpec
 
 
+object ECCP256 {
 
-class ECCP256 {
-    companion object {
-        const val stdName = "secp256r1"
+    fun getParams(): ECParameterSpec {
+        val keyPair = generateKeyPair()
+        val pubKey = keyPair.public as ECPublicKey
+        return pubKey.params
     }
 
-    fun generateP256KeyPair(alias: String): KeyPair {
-        val kpg: KeyPairGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore")
-//        val kpg: KeyPairGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC,"BC")
-        val parameterSpec = KeyGenParameterSpec.Builder(
-            alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-                    or KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY
-        ).setAlgorithmParameterSpec(ECGenParameterSpec(stdName))
-            .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA384, KeyProperties.DIGEST_SHA512)
-            .build()
-        kpg.initialize(parameterSpec)
-        return kpg.generateKeyPair()
+    fun generateKeyPair(): KeyPair {
+        val kpg = KeyPairGenerator.getInstance("EC")
+        kpg.initialize(256)
+        var keypair = kpg.generateKeyPair()
+        while (true) {
+            val ecPubKey = keypair.public as ECPublicKey
+            if (ecPubKey.w.affineX.toByteArray().size == 32 && ecPubKey.w.affineY.toByteArray().size == 32) {
+                break
+            }
+            keypair = kpg.generateKeyPair()
+        }
+        return keypair
+    }
+
+    fun fromPublicHex(pubHex:String):ECPublicKey{
+        HexUtil.hexToUBytes(pubHex).run {
+            ECC.unmarshal(getParams().curve, this)
+        }.run {
+            ECPublicKeySpec(this, getParams())
+        }.run {
+            KeyFactory.getInstance("EC").generatePublic(this)
+        }.run {
+            return this as ECPublicKey
+        }
     }
 
     fun sign(privateKey: PrivateKey, data: ByteArray): ByteArray? {
@@ -40,4 +56,6 @@ class ECCP256 {
             verify(signature)
         }
     }
+
+
 }
