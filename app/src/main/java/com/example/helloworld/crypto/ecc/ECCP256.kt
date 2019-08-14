@@ -2,6 +2,7 @@ package com.example.helloworld.crypto.ecc
 
 import com.example.helloworld.utils.HexUtil
 import java.security.*
+import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.spec.ECParameterSpec
 import java.security.spec.ECPublicKeySpec
@@ -15,30 +16,27 @@ object ECCP256 {
         return pubKey.params
     }
 
-    fun generateKeyPair(): KeyPair {
-        val kpg = KeyPairGenerator.getInstance("EC")
-        kpg.initialize(256)
-        var keypair = kpg.generateKeyPair()
-        while (true) {
-            val ecPubKey = keypair.public as ECPublicKey
-            if (ecPubKey.w.affineX.toByteArray().size == 32 && ecPubKey.w.affineY.toByteArray().size == 32) {
-                break
-            }
-            keypair = kpg.generateKeyPair()
-        }
-        return keypair
-    }
+fun generateKeyPair(): KeyPair {
+    val kpg = KeyPairGenerator.getInstance("EC")
+    kpg.initialize(256)
+    return kpg.generateKeyPair()
+}
 
-    fun fromPublicHex(pubHex:String):ECPublicKey{
-        HexUtil.hexToUBytes(pubHex).run {
-            ECC.unmarshal(getParams().curve, this)
-        }.run {
-            ECPublicKeySpec(this, getParams())
-        }.run {
-            KeyFactory.getInstance("EC").generatePublic(this)
-        }.run {
-            return this as ECPublicKey
-        }
+fun fromPublicHex(pubHex: String): ECPublicKey {
+    HexUtil.hexToUBytes(pubHex).run {
+        ECC.unmarshal(getParams().curve, this)
+    }.run {
+        ECPublicKeySpec(this, getParams())
+    }.run {
+        KeyFactory.getInstance("EC").generatePublic(this)
+    }.run {
+        return this as ECPublicKey
+    }
+}
+
+    fun toPublicHex(publicKey: ECPublicKey): String {
+        val pubBytes = ECC.marshal(publicKey.params.curve, publicKey.w)
+        return HexUtil.uBytesToHex(pubBytes)
     }
 
     fun sign(privateKey: PrivateKey, data: ByteArray): ByteArray? {

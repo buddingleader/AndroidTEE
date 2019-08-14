@@ -4,35 +4,38 @@ import com.example.helloworld.utils.HexUtil
 import java.nio.ByteBuffer
 import java.util.*
 import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 
 object AESHelper {
-    var transformation = "AES/CBC/PKCS5Padding"
-    var keyLength = 16
+    private const val transformation = "AES/CBC/PKCS5Padding"
+    const val keyLength = 32
+    private const val ivLength = 16
 
-    fun encrypt(plainText: String, aesString: String): String {
-        val aesKey = pkcs5Padding(aesString)
+    fun encrypt(plaintext: ByteArray, aesKey: ByteArray): String {
+        val aesKey = pkcs5Padding(aesKey)
+
         val cipher = Cipher.getInstance(transformation)
         val keySpec = SecretKeySpec(aesKey, "AES")
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec)
+        val ivSpec = IvParameterSpec(aesKey.copyOf(ivLength))
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec)
 
-        val cipherTextBytes = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
+        val cipherTextBytes = cipher.doFinal(plaintext)
         return HexUtil.bytesToHex(cipherTextBytes)
     }
 
-    fun decrypt(cipherText: String, aesString: String): String {
-        val aesKey = pkcs5Padding(aesString)
+    fun decrypt(cipherText: String, aesKey: ByteArray): ByteArray {
+        val aesKey = pkcs5Padding(aesKey)
         val cipher = Cipher.getInstance(transformation)
         val keySpec = SecretKeySpec(aesKey, "AES")
-        cipher.init(Cipher.DECRYPT_MODE, keySpec)
+        val ivSpec = IvParameterSpec(aesKey.copyOf(ivLength))
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec)
 
-        val plainTextBytes = cipher.doFinal(HexUtil.hexToBytes(cipherText))
-        return String(plainTextBytes, Charsets.UTF_8)
+        return cipher.doFinal(HexUtil.hexToBytes(cipherText))
     }
 
-    fun pkcs5Padding(aesString: String): ByteArray {
-        val aesKey = aesString.toByteArray(Charsets.UTF_8)
+    fun pkcs5Padding(aesKey: ByteArray): ByteArray {
         if (aesKey.size < keyLength) {
             val paddingSize = keyLength - aesKey.size
             var padding = ByteArray(paddingSize)

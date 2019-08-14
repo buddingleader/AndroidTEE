@@ -3,19 +3,29 @@ package com.example.helloworld.crypto.ecc
 import java.math.BigInteger
 import java.security.spec.ECPoint
 import java.security.spec.EllipticCurve
-import kotlin.experimental.and
 
 object ECC {
-    private val ERROR_EC_POINT = ECPoint(BigInteger("0"), BigInteger("0"))
+    val ERROR_EC_POINT = ECPoint(BigInteger("0"), BigInteger("0"))
+    val U_BYTE_ARRAY_SIZE = 33
 
-    fun marshal(curve: EllipticCurve, g: ECPoint): ByteArray {
+    fun marshal(curve: EllipticCurve, g: ECPoint): UByteArray {
         val byteLen = (curve.field.fieldSize + 7) shr 3
-        val ret = ByteArray(1 + 2 * byteLen)
-        ret[0] = 4
+        val ret = UByteArray(1 + 2 * byteLen)
+        // uncompressed point
+        ret[0] = 4.toUByte()
 
-        val xBytes = g.affineX.toByteArray()
+        // copy xBytes into ret
+        var xBytes = g.affineX.toByteArray().toUByteArray()
+        if (xBytes.size == U_BYTE_ARRAY_SIZE) {
+            xBytes = xBytes.copyOfRange(1, U_BYTE_ARRAY_SIZE)
+        }
         xBytes.copyInto(ret, 1 + byteLen - xBytes.size)
-        val yBytes = g.affineY.toByteArray()
+
+        // copy yBytes into ret
+        var yBytes = g.affineY.toByteArray().toUByteArray()
+        if (yBytes.size == U_BYTE_ARRAY_SIZE) {
+            yBytes = yBytes.copyOfRange(1, U_BYTE_ARRAY_SIZE)
+        }
         yBytes.copyInto(ret, 1 + 2 * byteLen - yBytes.size)
         return ret
     }
@@ -29,18 +39,22 @@ object ECC {
             return ERROR_EC_POINT
         }
 
+        // uncompressed form
         if (data[0].toInt() != 4) {
             return ERROR_EC_POINT
         }
 
-
+        // get x from data
         var xBytes = UByteArray(1 + byteLen)
         data.copyInto(xBytes, 1, 1, 1 + byteLen)
         val x = BigInteger(xBytes.toByteArray())
+
+        // get y from data
         var yBytes = UByteArray(1 + byteLen)
         data.copyInto(yBytes, 1, 1 + byteLen, data.size)
         val y = BigInteger(yBytes.toByteArray())
 
+        // check x and y
         val p = getGoLangP(curve)
         if (x >= p || y >= p) {
             return ERROR_EC_POINT
@@ -75,228 +89,202 @@ object ECC {
         return x3.compareTo(y2) == 0
     }
 
-    //    func (curve *CurveParams) ScalarMult(Bx, By *big.Int, k []byte) (*big.Int, *big.Int) {
-//	Bz := new(big.Int).SetInt64(1)
-//	x, y, z := new(big.Int), new(big.Int), new(big.Int)
-//
-//	for _, byte := range k {
-//		for bitNum := 0; bitNum < 8; bitNum++ {
-//			x, y, z = curve.doubleJacobian(x, y, z)
-//			if byte&0x80 == 0x80 {
-//				x, y, z = curve.addJacobian(Bx, By, Bz, x, y, z)
-//			}
-//			byte <<= 1
-//		}
-//	}
-//
-//	return curve.affineFromJacobian(x, y, z)
-//}
     fun scalarMultiply(
         curve: EllipticCurve,
         Bx: BigInteger,
         By: BigInteger,
-        k: ByteArray
+        s: UByteArray
     ): Pair<BigInteger, BigInteger> {
-        val Bz = BigInteger("1")
-        var (x, y, z) = Triple(BigInteger("0"), BigInteger("0"), BigInteger("0"))
+        var k = s
+        if (k.size == U_BYTE_ARRAY_SIZE) {
+            k = k.copyOfRange(1, U_BYTE_ARRAY_SIZE)
+        }
+
+        val Bz = BigInteger.ONE
+        var xyz = Triple(BigInteger.ZERO, BigInteger.ZERO, BigInteger.ZERO)
         for (byte in k) {
             var b = byte
-            for (bitNum in 0..8) {
-                var (x, y, z) = curve.doubleJacobian(x, y, z)
-                if (b and "0x80".toByte() == "0x80".toByte()) {
-                    var (x, y, z) = curve.addJacobian(Bx, By, Bz, x, y, z)
+            for (bitNum in 0..7) {
+                xyz = curve.doubleJacobian(xyz)
+                if (b and 0x80.toUByte() == 0x80.toUByte()) {
+                    xyz = curve.addJacobian(Bx, By, Bz, xyz)
                 }
 
-                b = (b.toInt() and 0xFF shr 1).toByte()
+                b = (b.toInt().shl(1)).toUByte()
             }
         }
-        return curve.affineFromJacobian(x, y, z)
+
+        return curve.affineFromJacobian(xyz)
     }
 
-    //// doubleJacobian takes a point in Jacobian coordinates, (x, y, z), and
-//// returns its double, also in Jacobian form.
-//func (curve *CurveParams) doubleJacobian(x, y, z *big.Int) (*big.Int, *big.Int, *big.Int) {
-//	// See https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#doubling-dbl-2001-b
-//	delta := new(big.Int).Mul(z, z)
-//	delta.Mod(delta, curve.P)
-//	gamma := new(big.Int).Mul(y, y)
-//	gamma.Mod(gamma, curve.P)
-//	alpha := new(big.Int).Sub(x, delta)
-//	if alpha.Sign() == -1 {
-//		alpha.Add(alpha, curve.P)
-//	}
-//	alpha2 := new(big.Int).Add(x, delta)
-//	alpha.Mul(alpha, alpha2)
-//	alpha2.Set(alpha)
-//	alpha.Lsh(alpha, 1)
-//	alpha.Add(alpha, alpha2)
-//
-//	beta := alpha2.Mul(x, gamma)
-//
-//	x3 := new(big.Int).Mul(alpha, alpha)
-//	beta8 := new(big.Int).Lsh(beta, 3)
-//	beta8.Mod(beta8, curve.P)
-//	x3.Sub(x3, beta8)
-//	if x3.Sign() == -1 {
-//		x3.Add(x3, curve.P)
-//	}
-//	x3.Mod(x3, curve.P)
-//
-//	z3 := new(big.Int).Add(y, z)
-//	z3.Mul(z3, z3)
-//	z3.Sub(z3, gamma)
-//	if z3.Sign() == -1 {
-//		z3.Add(z3, curve.P)
-//	}
-//	z3.Sub(z3, delta)
-//	if z3.Sign() == -1 {
-//		z3.Add(z3, curve.P)
-//	}
-//	z3.Mod(z3, curve.P)
-//
-//	beta.Lsh(beta, 2)
-//	beta.Sub(beta, x3)
-//	if beta.Sign() == -1 {
-//		beta.Add(beta, curve.P)
-//	}
-//	y3 := alpha.Mul(alpha, beta)
-//
-//	gamma.Mul(gamma, gamma)
-//	gamma.Lsh(gamma, 3)
-//	gamma.Mod(gamma, curve.P)
-//
-//	y3.Sub(y3, gamma)
-//	if y3.Sign() == -1 {
-//		y3.Add(y3, curve.P)
-//	}
-//	y3.Mod(y3, curve.P)
-//
-//	return x3, y3, z3
-//}
-    fun EllipticCurve.doubleJacobian(
-        x: BigInteger,
-        y: BigInteger,
-        z: BigInteger
-    ): Triple<BigInteger, BigInteger, BigInteger> {
+    // doubleJacobian takes a point in Jacobian coordinates, (x, y, z), and
+    // returns its double, also in Jacobian form.
+    fun EllipticCurve.doubleJacobian(xyz: Triple<BigInteger, BigInteger, BigInteger>): Triple<BigInteger, BigInteger, BigInteger> {
+        val (x, y, z) = xyz
+        val p = getGoLangP(this)
+        // See https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#doubling-dbl-2001-b
         var delta = z.multiply(z)
-//            delta.mod()
-        return Triple(x, y, z)
+        delta = delta.mod(p)
+        var gamma = y.multiply(y)
+        gamma = gamma.mod(p)
+        var alpha = x.subtract(delta)
+        if (alpha.signum() == -1) {
+            alpha = alpha.add(p)
+        }
+        var alpha2 = x.add(delta)
+        alpha = alpha.multiply(alpha2)
+        alpha2 = alpha.add(BigInteger.ZERO)
+        alpha = alpha.shiftLeft(1)
+        alpha = alpha.add(alpha2)
+
+        var beta = x.multiply(gamma)
+
+        var x3 = alpha.multiply(alpha)
+        var beta8 = beta.shiftLeft(3)
+        beta8 = beta8.mod(p)
+        x3 = x3.subtract(beta8)
+        if (x3.signum() == -1) {
+            x3 = x3.add(p)
+        }
+        x3 = x3.mod(p)
+
+        var z3 = y.add(z)
+        z3 = z3.multiply(z3)
+        z3 = z3.subtract(gamma)
+        if (z3.signum() == -1) {
+            z3 = z3.add(p)
+        }
+        z3 = z3.subtract(delta)
+        if (z3.signum() == -1) {
+            z3 = z3.add(p)
+        }
+        z3 = z3.mod(p)
+
+        beta = beta.shiftLeft(2)
+        beta = beta.subtract(x3)
+        if (beta.signum() == -1) {
+            beta = beta.add(p)
+        }
+        var y3 = alpha.multiply(beta)
+
+        gamma = gamma.multiply(gamma)
+        gamma = gamma.shiftLeft(3)
+        gamma = gamma.mod(p)
+
+        y3 = y3.subtract(gamma)
+        if (y3.signum() == -1) {
+            y3 = y3.add(p)
+        }
+        y3 = y3.mod(p)
+
+        return Triple(x3, y3, z3)
     }
 
-    //        // addJacobian takes two points in Jacobian coordinates, (x1, y1, z1) and
-//// (x2, y2, z2) and returns their sum, also in Jacobian form.
-//func (curve *CurveParams) addJacobian(x1, y1, z1, x2, y2, z2 *big.Int) (*big.Int, *big.Int, *big.Int) {
-//	// See https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#addition-add-2007-bl
-//	x3, y3, z3 := new(big.Int), new(big.Int), new(big.Int)
-//	if z1.Sign() == 0 {
-//		x3.Set(x2)
-//		y3.Set(y2)
-//		z3.Set(z2)
-//		return x3, y3, z3
-//	}
-//	if z2.Sign() == 0 {
-//		x3.Set(x1)
-//		y3.Set(y1)
-//		z3.Set(z1)
-//		return x3, y3, z3
-//	}
-//
-//	z1z1 := new(big.Int).Mul(z1, z1)
-//	z1z1.Mod(z1z1, curve.P)
-//	z2z2 := new(big.Int).Mul(z2, z2)
-//	z2z2.Mod(z2z2, curve.P)
-//
-//	u1 := new(big.Int).Mul(x1, z2z2)
-//	u1.Mod(u1, curve.P)
-//	u2 := new(big.Int).Mul(x2, z1z1)
-//	u2.Mod(u2, curve.P)
-//	h := new(big.Int).Sub(u2, u1)
-//	xEqual := h.Sign() == 0
-//	if h.Sign() == -1 {
-//		h.Add(h, curve.P)
-//	}
-//	i := new(big.Int).Lsh(h, 1)
-//	i.Mul(i, i)
-//	j := new(big.Int).Mul(h, i)
-//
-//	s1 := new(big.Int).Mul(y1, z2)
-//	s1.Mul(s1, z2z2)
-//	s1.Mod(s1, curve.P)
-//	s2 := new(big.Int).Mul(y2, z1)
-//	s2.Mul(s2, z1z1)
-//	s2.Mod(s2, curve.P)
-//	r := new(big.Int).Sub(s2, s1)
-//	if r.Sign() == -1 {
-//		r.Add(r, curve.P)
-//	}
-//	yEqual := r.Sign() == 0
-//	if xEqual && yEqual {
-//		return curve.doubleJacobian(x1, y1, z1)
-//	}
-//	r.Lsh(r, 1)
-//	v := new(big.Int).Mul(u1, i)
-//
-//	x3.Set(r)
-//	x3.Mul(x3, x3)
-//	x3.Sub(x3, j)
-//	x3.Sub(x3, v)
-//	x3.Sub(x3, v)
-//	x3.Mod(x3, curve.P)
-//
-//	y3.Set(r)
-//	v.Sub(v, x3)
-//	y3.Mul(y3, v)
-//	s1.Mul(s1, j)
-//	s1.Lsh(s1, 1)
-//	y3.Sub(y3, s1)
-//	y3.Mod(y3, curve.P)
-//
-//	z3.Add(z1, z2)
-//	z3.Mul(z3, z3)
-//	z3.Sub(z3, z1z1)
-//	z3.Sub(z3, z2z2)
-//	z3.Mul(z3, h)
-//	z3.Mod(z3, curve.P)
-//
-//	return x3, y3, z3
-//}
+    // addJacobian takes two points in Jacobian coordinates, (x1, y1, z1) and
+// (x2, y2, z2) and returns their sum, also in Jacobian form.
     fun EllipticCurve.addJacobian(
-        Bx: BigInteger,
-        By: BigInteger,
-        Bz: BigInteger,
-        x: BigInteger,
-        y: BigInteger,
-        z: BigInteger
+        x1: BigInteger,
+        y1: BigInteger,
+        z1: BigInteger,
+        xyz: Triple<BigInteger, BigInteger, BigInteger>
     ): Triple<BigInteger, BigInteger, BigInteger> {
-        var (x, y, z) = Triple(BigInteger("0"), BigInteger("0"), BigInteger("0"))
+        val (x2, y2, z2) = xyz
+        val p = getGoLangP(this)
+        // See https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#addition-add-2007-bl
+        var (x3, y3, z3) = Triple(BigInteger.ZERO, BigInteger.ZERO, BigInteger.ZERO)
+        if (z1.signum() == 0) {
+            x3 = x2.add(BigInteger.ZERO)
+            y3 = y2.add(BigInteger.ZERO)
+            z3 = z3.add(BigInteger.ZERO)
+            return Triple(x3, y3, z3)
+        }
+        if (z2.signum() == 0) {
+            x3 = x1.add(BigInteger.ZERO)
+            y3 = y1.add(BigInteger.ZERO)
+            z3 = z1.add(BigInteger.ZERO)
+            return Triple(x3, y3, z3)
+        }
 
-        return Triple(x, y, z)
+        var z1z1 = z1.multiply(z1)
+        z1z1 = z1z1.mod(p)
+        var z2z2 = z2.multiply(z2)
+        z2z2 = z2z2.mod(p)
+
+        var u1 = x1.multiply(z2z2)
+        u1 = u1.mod(p)
+        var u2 = x2.multiply(z1z1)
+        u2 = u2.mod(p)
+        var h = u2.subtract(u1)
+        var xEqual = h.signum() == 0
+        if (h.signum() == -1) {
+            h = h.add(p)
+        }
+        var i = h.shiftLeft(1)
+        i = i.multiply(i)
+        var j = h.multiply(i)
+
+        var s1 = y1.multiply(z2)
+        s1 = s1.multiply(z2z2)
+        s1 = s1.mod(p)
+        var s2 = y2.multiply(z1)
+        s2 = s2.multiply(z1z1)
+        s2 = s2.mod(p)
+        var r = s2.subtract(s1)
+        if (r.signum() == -1) {
+            r = r.add(p)
+        }
+        var yEqual = r.signum() == 0
+        if (xEqual && yEqual) {
+            return this.doubleJacobian(Triple(x1, y1, z1))
+        }
+        r = r.shiftLeft(1)
+        var v = u1.multiply(i)
+
+        x3 = r.add(BigInteger.ZERO)
+        x3 = x3.multiply(x3)
+        x3 = x3.subtract(j)
+        x3 = x3.subtract(v)
+        x3 = x3.subtract(v)
+        x3 = x3.mod(p)
+
+        y3 = r.add(BigInteger.ZERO)
+        v = v.subtract(x3)
+        y3 = y3.multiply(v)
+        s1 = s1.multiply(j)
+        s1 = s1.shiftLeft(1)
+        y3 = y3.subtract(s1)
+        y3 = y3.mod(p)
+
+        z3 = z1.add(z2)
+        z3 = z3.multiply(z3)
+        z3 = z3.subtract(z1z1)
+        z3 = z3.subtract(z2z2)
+        z3 = z3.multiply(h)
+        z3 = z3.mod(p)
+
+        return Triple(x3, y3, z3)
     }
 
-    //        // affineFromJacobian reverses the Jacobian transform. See the comment at the
-//// top of the file. If the point is ∞ it returns 0, 0.
-//func (curve *CurveParams) affineFromJacobian(x, y, z *big.Int) (xOut, yOut *big.Int) {
-//	if z.Sign() == 0 {
-//		return new(big.Int), new(big.Int)
-//	}
-//
-//	zinv := new(big.Int).ModInverse(z, curve.P)
-//	zinvsq := new(big.Int).Mul(zinv, zinv)
-//
-//	xOut = new(big.Int).Mul(x, zinvsq)
-//	xOut.Mod(xOut, curve.P)
-//	zinvsq.Mul(zinvsq, zinv)
-//	yOut = new(big.Int).Mul(y, zinvsq)
-//	yOut.Mod(yOut, curve.P)
-//	return
-//}
+    // affineFromJacobian reverses the Jacobian transform. See the comment at the
+    // top of the file. If the point is ∞ it returns 0, 0.
     fun EllipticCurve.affineFromJacobian(
-        x: BigInteger,
-        y: BigInteger,
-        z: BigInteger
+        xyz: Triple<BigInteger, BigInteger, BigInteger>
     ): Pair<BigInteger, BigInteger> {
+        val (x, y, z) = xyz
+        val p = getGoLangP(this)
 
-        return Pair(x, y)
+        if (z.signum() == 0) {
+            return Pair(BigInteger.ZERO, BigInteger.ZERO)
+        }
+
+        var zinv = z.modInverse(p)
+        var zinvsq = zinv.multiply(zinv)
+
+        var xOut = x.multiply(zinvsq)
+        xOut = xOut.mod(p)
+        zinvsq = zinvsq.multiply(zinv)
+        var yOut = y.multiply(zinvsq)
+        yOut = yOut.mod(p)
+        return Pair(xOut, yOut)
     }
-
 }

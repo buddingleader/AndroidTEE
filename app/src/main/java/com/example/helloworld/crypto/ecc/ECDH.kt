@@ -28,11 +28,28 @@ class ECDH {
 
         fun generateSharedSecret(privateKey: ECPrivateKey, publicKey: ECPublicKey): ByteArray {
             val (x, _) = ECC.scalarMultiply(
-                privateKey.params.curve, publicKey.w.affineX, publicKey.w.affineY, privateKey.s.toByteArray()
+                privateKey.params.curve,
+                publicKey.w.affineX,
+                publicKey.w.affineY,
+                privateKey.s.toByteArray().toUByteArray()
             )
 
+            val data = x.toByteArray()
+            if (data.size == ECC.U_BYTE_ARRAY_SIZE) {
+                data.copyOfRange(1, ECC.U_BYTE_ARRAY_SIZE)
+            }
+
             val digest = MessageDigest.getInstance("SHA-256")
-            return digest.digest(x.toByteArray())
+            return digest.digest(data)
+        }
+
+
+        fun generateSharedSecret(privateKey: PrivateKey, publicKey: PublicKey): SecretKey {
+            val keyAgreement = KeyAgreement.getInstance("ECDH", org.bouncycastle.jce.provider.BouncyCastleProvider())
+            keyAgreement.init(privateKey)
+            keyAgreement.doPhase(publicKey, true)
+
+            return keyAgreement.generateSecret("AES")
         }
 
         fun encrypt(key: SecretKey?, plainTextBytes: ByteArray): String {

@@ -8,6 +8,7 @@ import android.widget.TextView
 import android.widget.Toast
 import com.example.helloworld.crypto.aes.AESHelper
 import com.example.helloworld.crypto.hash.HashHelper
+import com.example.helloworld.utils.HexUtil
 import com.github.kittinunf.fuel.Fuel
 import com.github.kittinunf.fuel.core.FileDataPart
 import java.io.File
@@ -58,7 +59,7 @@ class DisplayMessageActivity : AppCompatActivity() {
         // Get the Intent that started this activity and extract the string
         val message = intent.getStringExtra(EXTRA_MESSAGE)
         val aesString = intent.getStringExtra(AES_SECRET_KEY)
-        val encryptedHex = AESHelper.encrypt(message, aesString)
+        val encryptedHex = AESHelper.encrypt(message.toByteArray(), HexUtil.hexToBytes(aesString))
 
         // Capture the layout's TextView and set the string as its text
         findViewById<TextView>(R.id.textView1).apply {

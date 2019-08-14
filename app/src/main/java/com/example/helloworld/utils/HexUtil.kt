@@ -28,11 +28,17 @@ object HexUtil {
     }
 
     private fun ByteArray.toHex(): String {
-        return joinToString("") { "%02x".format(it) }
-    }
+        val result = StringBuffer()
 
-    fun uBytesToHex(data: UByteArray): String {
-        return data.toHex()
+        forEach {
+            val octet = it.toInt()
+            val firstIndex = (octet and 0xF0).ushr(4)
+            val secondIndex = octet and 0x0F
+            result.append(HEX_CHARS[firstIndex])
+            result.append(HEX_CHARS[secondIndex])
+        }
+
+        return result.toString()
     }
 
     fun hexToUBytes(encoded: String): UByteArray {
@@ -51,6 +57,10 @@ object HexUtil {
         return result
     }
 
+    fun uBytesToHex(data: UByteArray): String {
+        return data.toHex()
+    }
+
     private fun UByteArray.toHex(): String {
         val result = StringBuffer()
 
@@ -63,7 +73,5 @@ object HexUtil {
         }
 
         return result.toString()
-//        return joinToString("") { "%02x".format(it) }
-//        return joinToString("") { "%02x".format(it) }
     }
 }
