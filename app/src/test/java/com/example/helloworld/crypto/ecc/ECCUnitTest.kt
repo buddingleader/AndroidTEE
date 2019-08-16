@@ -19,7 +19,7 @@ class ECCUnitTest {
     @Test
     fun scalarMultiply_isCorrect() {
         val keypair = ECCP256.generateKeyPair()
-        val priv = keypair.private as ECPrivateKey
+        val priv = ECCP256.fromPrivateBytes(keypair.first)
         val X = BigInteger("42309187002739805951602027765812718539274653581056272841330484659748798544133")
         val Y = BigInteger("41553079035870764182946005789567871934527410236442122824193411214379303279397")
         val D = BigInteger("94648885406075364822723245673535794069561978283666952281426111539877895054624")

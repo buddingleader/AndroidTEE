@@ -2,6 +2,7 @@ package com.example.helloworld.crypto.ecc
 
 import com.example.helloworld.crypto.aes.AESHelper
 import com.example.helloworld.utils.HexUtil
+import org.bouncycastle.util.encoders.Hex
 import org.junit.Assert
 import org.junit.Test
 import java.security.MessageDigest
@@ -24,12 +25,12 @@ class ECDHUnitTest {
     @Test
     fun generateSharedSecret_isCorrect() {
         val keypair = ECCP256.generateKeyPair()
-        println("pubHex:${ECCP256.toPublicHex(keypair.public as ECPublicKey)}")
+        println("pubHex:${HexUtil.bytesToHex(keypair.second)}")
 
         val serverPubHex =
             "04deb43a5bb4c34cf8db53311d4d9f95d2356b8c011349ecb04fc00b73c303bc9dc0675f4ca45a562f589b993a94129482eb9b03f259ce8982e525927c3f70fdbe"
         val ecPubKey = ECCP256.fromPublicHex(serverPubHex)
-        var aesKey = ECDH.generateSharedSecret(keypair.private as ECPrivateKey, ecPubKey)
+        var aesKey = ECDH.generateSharedSecret(ECCP256.fromPrivateBytes(keypair.first), ecPubKey)
         val aesHex = HexUtil.bytesToHex(aesKey)
         println("aesHex:$aesHex")
     }

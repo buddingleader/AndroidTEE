@@ -3,6 +3,8 @@ package com.example.helloworld.crypto.ecc
 import java.math.BigInteger
 import java.security.spec.ECPoint
 import java.security.spec.EllipticCurve
+import java.util.*
+
 
 object ECC {
     val ERROR_EC_POINT = ECPoint(BigInteger("0"), BigInteger("0"))
@@ -286,5 +288,22 @@ object ECC {
         var yOut = y.multiply(zinvsq)
         yOut = yOut.mod(p)
         return Pair(xOut, yOut)
+    }
+
+    private const val BEGIN_CERT = "-----BEGIN CERTIFICATE-----"
+    private const val END_CERT = "-----END CERTIFICATE-----"
+    private val LINE_SEPARATOR = System.getProperty("line.separator")
+    fun toPEMFileContents(rawPEMText: ByteArray): ByteArray {
+        val encoder = Base64.getMimeEncoder(64, LINE_SEPARATOR?.toByteArray())
+        val encodedCertText = encoder.encodeToString(rawPEMText)
+        return (BEGIN_CERT + LINE_SEPARATOR + encodedCertText + LINE_SEPARATOR + END_CERT).toByteArray()
+    }
+
+    fun fromPEMFileContents(certFileContents: String): ByteArray {
+        var privKeyPEM = certFileContents.replace(BEGIN_CERT + LINE_SEPARATOR, "")
+        privKeyPEM = privKeyPEM.replace(END_CERT, "")
+
+        val decoder = Base64.getMimeDecoder()
+        return decoder.decode(privKeyPEM)
     }
 }
