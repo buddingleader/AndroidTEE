@@ -70,7 +70,7 @@ class DisplayMessageActivity : AppCompatActivity() {
         }
 
         // Write encrypted hex to a file, named message hash, and the type is text
-        val filename = HashHelper.sha256(message)
+        val filename = HashHelper.sha256(message.toByteArray())
         val outStream = openFileOutput(filename, Context.MODE_PRIVATE)
         outStream.write(encryptedHex.toByteArray(Charsets.UTF_8))
         outStream.close()

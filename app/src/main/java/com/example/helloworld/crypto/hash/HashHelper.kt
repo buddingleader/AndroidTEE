@@ -5,9 +5,9 @@ import java.security.MessageDigest
 
 object HashHelper {
 
-    fun sha256(str:String): String {
+    fun sha256(str: ByteArray): String {
         val digest = MessageDigest.getInstance("SHA-256")
-        val result = digest.digest(str.toByteArray())
+        val result = digest.digest(str)
         return HexUtil.bytesToHex(result)
     }
 }

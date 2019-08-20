@@ -13,6 +13,8 @@ class P256UnitTest {
     @Test
     fun generateKeyPair_isCorrect() {
         val keypair = ECCP256.generateKeyPair()
+        println(HexUtil.bytesToHex(keypair.first))
+        println(HexUtil.bytesToHex(keypair.second))
         var privKey = ECCP256.fromPrivateBytes(keypair.first)
         val pubKey = ECCP256.fromPublicBytes(keypair.second)
 
@@ -109,7 +111,7 @@ class P256UnitTest {
             "308187020100301306072a8648ce3d020106082a8648ce3d030107046d306b020101042062793dde394bba8051e33423077e46958afd913929f670913ffd9682317b44bca14403420004c0f4afb46d93fac0f71816697eae2b4dd3b264999d65000807ba2ef4a0e66973fafa60a2931d248e8e802918b4d939079a4afd89380c83d3a3cd264f21abef5e"
         var privBytes = HexUtil.hexToBytes(serverPrivHex)
         var privKey = ECCP256.fromPrivateBytes(privBytes)
-        var privHex = ECCP256.toPrivHex(privKey)
+        var privHex = ECCP256.toPrivateHex(privKey)
         Assert.assertEquals(serverPrivHex, privHex)
     }
 
