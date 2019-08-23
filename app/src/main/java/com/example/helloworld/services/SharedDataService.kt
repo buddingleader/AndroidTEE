@@ -9,6 +9,7 @@ import android.widget.Toast
 import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Parser
 import com.example.helloworld.crypto.ecc.ECCP256
+import com.example.helloworld.crypto.ecc.ECCP256.publicHexForTests
 import com.example.helloworld.crypto.hash.HashHelper
 import com.github.kittinunf.fuel.Fuel
 
@@ -93,7 +94,13 @@ fun queryDataByID(id: String): String? {
 fun authorizeData(notificationID: String, status: Int, message: String, encryptedType: Int): String? {
     Fuel.put(
         "$SERVER_ADDRESS/tee/authorize/",
-        listOf("id" to notificationID, "status" to status, "message" to message, "encryptedType" to encryptedType)
+        listOf(
+            "id" to notificationID,
+            "status" to status,
+            "message" to message,
+            "encryptedKey" to publicHexForTests,
+            "encryptedType" to encryptedType
+        )
     ).also { println(it.url) }
         .also { println(String(it.body.toByteArray())) }
         .responseString().run {

@@ -5,7 +5,6 @@ import com.beust.klaxon.Parser
 
 object Common {
     fun parseResult(result: String?): String? {
-        // parse response body result
         val parser: Parser = Parser.default()
         val stringBuilder: StringBuilder = StringBuilder(result.toString())
         val json: JsonObject = parser.parse(stringBuilder) as JsonObject
@@ -21,5 +20,26 @@ object Common {
         }
 
         return result
+    }
+
+    //    fun parseNotifications(task: String?): List<String> {
+    fun parseNotifications(task: String?): Map<String, Any?>? {
+        val parser: Parser = Parser.default()
+        val stringBuilder: StringBuilder = StringBuilder(task.toString())
+        val json: JsonObject = parser.parse(stringBuilder) as JsonObject
+
+        val (target, success) = Pair(json.obj("result"), json.boolean("success"))
+        when (success) {
+            true -> {
+                println("target:$target")
+                val result = target?.obj("dataNotifications")
+                return result?.toMap()
+            }
+            else -> {
+                println("error: $task")
+            }
+        }
+
+        return HashMap()
     }
 }
