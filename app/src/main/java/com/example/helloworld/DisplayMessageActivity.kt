@@ -29,6 +29,7 @@ class DisplayMessageActivity : AppCompatActivity() {
                 .responseString().run {
                     val (result, error) = this.third
                     if (error != null) {
+                        println(this.second)
                         println("download file[$pathname] error: $error")
                     }
 

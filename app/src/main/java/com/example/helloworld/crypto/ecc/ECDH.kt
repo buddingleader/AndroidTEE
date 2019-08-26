@@ -34,9 +34,9 @@ class ECDH {
                 privateKey.s.toByteArray().toUByteArray()
             )
 
-            val data = x.toByteArray()
+            var data = x.toByteArray()
             if (data.size == ECC.U_BYTE_ARRAY_SIZE) {
-                data.copyOfRange(1, ECC.U_BYTE_ARRAY_SIZE)
+                data = data.copyOfRange(1, ECC.U_BYTE_ARRAY_SIZE)
             }
 
             val digest = MessageDigest.getInstance("SHA-256")

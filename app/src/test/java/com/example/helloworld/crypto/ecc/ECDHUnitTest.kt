@@ -1,6 +1,8 @@
 package com.example.helloworld.crypto.ecc
 
 import com.example.helloworld.crypto.aes.AESHelper
+import com.example.helloworld.crypto.ecc.ECCP256.privateHexForTests
+import com.example.helloworld.crypto.ecc.ECCP256.publicHexForTests
 import com.example.helloworld.utils.HexUtil
 import org.bouncycastle.util.encoders.Hex
 import org.junit.Assert
@@ -24,13 +26,19 @@ class ECDHUnitTest {
 
     @Test
     fun generateSharedSecret_isCorrect() {
-        val keypair = ECCP256.generateKeyPair()
-        println("pubHex:${HexUtil.bytesToHex(keypair.second)}")
-
         val serverPubHex =
-            "04deb43a5bb4c34cf8db53311d4d9f95d2356b8c011349ecb04fc00b73c303bc9dc0675f4ca45a562f589b993a94129482eb9b03f259ce8982e525927c3f70fdbe"
+            "048f03f8321b00a4466f4bf4be51c91898cd50d8cc64c6ecf53e73443e348d5925a16f88c8952b78ebac2dc277a2cc54c77b4c3c07830f49629b689edf63086293"
         val ecPubKey = ECCP256.fromPublicHex(serverPubHex)
-        var aesKey = ECDH.generateSharedSecret(ECCP256.fromPrivateBytes(keypair.first), ecPubKey)
+        val priv = ECCP256.fromPrivateHex("308187020100301306072a8648ce3d020106082a8648ce3d030107046d306b02010104202d130ea6dac76fcae718fbd20bf146643aa66fe6e5902975d2c5ed6ab3bcb5e2a144034200048f03f8321b00a4466f4bf4be51c91898cd50d8cc64c6ecf53e73443e348d5925a16f88c8952b78ebac2dc277a2cc54c77b4c3c07830f49629b689edf63086293")
+        val pub = ECCP256.fromPublicHex(publicHexForTests)
+        var aesKey = ECDH.generateSharedSecret(priv, pub)
+
+//        println("x:${ecPubKey.w.affineX}")
+//        println("y:${ecPubKey.w.affineY}")
+        println("x:${pub.w.affineX}")
+        println("y:${pub.w.affineY}")
+        println("s:${priv.s}")
+        println("aesKey:${aesKey.toUByteArray().contentToString()}")
         val aesHex = HexUtil.bytesToHex(aesKey)
         println("aesHex:$aesHex")
     }
