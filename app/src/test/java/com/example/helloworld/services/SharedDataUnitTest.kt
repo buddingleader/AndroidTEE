@@ -12,6 +12,7 @@ import org.junit.Assert
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 
 /**
  * Example local unit test, which will execute on the development machine (host).
@@ -43,12 +44,19 @@ class SharedDataUnitTest {
         // average is 30
         val data1 = getTestData(22)
         val data2 = getTestData(32)
+//        val algorithm:ByteArray = File("resume")
+        val file = File("resume")
+        println("absolutePath: ${file.absolutePath}")
+
+        val algorithm = file.readBytes()
 
         // upload
         val data1ID = upload(data1, "i'm 28 years old")
         val data2ID = upload(data2, "i'm 32 years old")
+        val algorithmID = upload(algorithm, "resume algorithm")
         println("data1ID: $data1ID")
         println("data2ID: $data2ID")
+        println("algorithmID: $algorithmID")
         Thread.sleep(2_000)
 
         // create task
@@ -56,9 +64,8 @@ class SharedDataUnitTest {
             data1ID.toString(),
             data2ID.toString()
         )
-        val algorithmID = "423956df9ab29aa3f7bb809e095eed64d98b8bea4c70ce9318f3b98ddfff90d1"
         val resultAddress = "/home/rabbit/teetest"
-        val taskID = createExecutionTask(dataIDs, algorithmID, resultAddress)
+        val taskID = createExecutionTask(dataIDs, algorithmID.toString(), resultAddress)
         println("taskID: $taskID")
         Thread.sleep(3_000)
 
@@ -73,8 +80,11 @@ class SharedDataUnitTest {
         // upload data
         val fileID1 = uploadData(data1)
         val fileID2 = uploadData(data2)
+        val algorithmFileID = uploadData(algorithm)
+
         println("fileID1: $fileID1")
         println("fileID2: $fileID2")
+        println("algorithmFileID: $algorithmFileID")
 
         // authorize data
         val notification1ID = notifications?.get(data1ID).toString()
@@ -88,7 +98,7 @@ class SharedDataUnitTest {
         Thread.sleep(2_000)
 
         // execute task - val taskID: String? = "4000b112dc92888e83b3cc9eaa414bb365599e7a689f7f66cc902c5cba6d6168"
-        val result = executeTask(taskID.toString(), 1)
+        val result = executeTask(taskID.toString(), algorithmFileID.toString(),1)
         println("result:$result")
 
         // download result

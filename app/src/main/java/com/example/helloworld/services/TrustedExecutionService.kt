@@ -89,10 +89,10 @@ fun queryTaskByID(taskID: String): String? {
 }
 
 //curl -sX PUT "http://localhost:8060/v1/task/" -F "algorithm_file=@/home/rabbit/teetest/client/resume" -F "task_id=$task_id" -F "executor=$A_owner" -F "container_type=1"
-fun executeTask(taskID: String, containerType: Int): String? {
+fun executeTask(taskID: String, algorithmID: String,containerType: Int): String? {
     Fuel.upload(
         "$SERVER_ADDRESS/task/",Method.PUT,
-        listOf("task_id" to taskID, "executor" to publicHexForTests, "container_type" to containerType)
+        listOf("task_id" to taskID, "algorithm_id" to algorithmID, "executor" to publicHexForTests, "container_type" to containerType)
     )
         .also { println(it.url) }
         .responseString().run {

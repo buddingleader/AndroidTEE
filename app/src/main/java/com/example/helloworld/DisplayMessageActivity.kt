@@ -44,6 +44,7 @@ class DisplayMessageActivity : AppCompatActivity() {
                 .responseString().run {
                     val (result, error) = this.third
                     if (error != null) {
+                        println("response: [${this.second}")
                         println("upload file[$pathname] error: $error")
                     }
 
